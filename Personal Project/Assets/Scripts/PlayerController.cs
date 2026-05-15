@@ -1,26 +1,52 @@
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.UIElements;
 
-public class PlayerController : MonoBehaviour
+[RequireComponent(typeof(CharacterController))]
+public class FPSController : MonoBehaviour
 {
-    float speed = 2.0f;
-    private Rigidbody playerRb;
+    public Camera playerCamera;
+    public float walkSpeed = 6f;
+    public float lookSpeed = 2f;
+    public float lookXLimit = 45f;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    CharacterController characterController;
+    Vector3 moveDirection = Vector3.zero;
+    float rotationX = 0;
+
     void Start()
     {
-       playerRb = GetComponent<Rigidbody>();
+        characterController = GetComponent<CharacterController>();
+
+        // Lock cursor to the center of the screen
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        float horizontalInput = Input.GetAxis("Horizontal");
-        float verticalInput = Input.GetAxis("Vertical");
+        // --- Player Rotation (Looking around) ---
+        rotationX += -Input.GetAxis("Mouse Y") * lookSpeed;
+        rotationX = Mathf.Clamp(rotationX, -lookXLimit, lookXLimit);
+        playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0, 0);
+        transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X") * lookSpeed, 0);
 
-        playerRb.AddForce(Vector3.forward * speed * verticalInput);
-        playerRb.AddForce(Vector3.right * speed * horizontalInput);
+        // --- Player Movement (Walking) ---
+        Vector3 forward = transform.TransformDirection(Vector3.forward);
+        Vector3 right = transform.TransformDirection(Vector3.right);
 
+        float curSpeedX = walkSpeed * Input.GetAxis("Vertical");
+        float curSpeedY = walkSpeed * Input.GetAxis("Horizontal");
+
+        // Simple gravity
+        float movementDirectionY = moveDirection.y;
+        moveDirection = (forward * curSpeedX) + (right * curSpeedY);
+        moveDirection.y = movementDirectionY;
+
+        if (!characterController.isGrounded)
+        {
+            moveDirection.y -= 9.81f * Time.deltaTime;
+        }
+
+        // Apply movement
+        characterController.Move(moveDirection * Time.deltaTime);
     }
 }
